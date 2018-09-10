@@ -1,0 +1,513 @@
+<template>
+  <section class="game">
+    <div class="form">
+      <div class="form-group">
+        <div>
+          <label>BET AMOUNT</label>   
+          <div class="input-amount-group">
+            <div class="input-group">
+              <img 
+                class="eos-logo"
+                :src="eosLogo" />
+              <input v-model="eos" />
+            </div>
+            <ul class="amount-rate">
+              <li @click="setEOS(.5)">1/2</li> 
+              <li @click="setEOS(2)">2X</li> 
+              <li @click="setEOS()">MAX</li> 
+            </ul>
+          </div>
+        </div> 
+        <div>
+          <label>PAYOUT ON WIN</label>
+          <div class="bet-cell">
+            <img 
+              class="eos-logo"
+              :src="eosLogo" />
+            <span>{{payWin}}</span>
+          </div> 
+        </div>
+      </div>
+      <div class="info-container">
+        <ul>
+          <li>
+            <label>ROLL UNDER TO WIN</label>
+            <span>{{rollUnder}}</span>
+          </li>
+          <li>
+            <label>PAYOUT</label>
+            <span>{{payOut}}x</span>
+          </li>
+          <li>
+            <label>WIN CHANCE</label>
+            <span>{{winChance}}%</span>
+          </li>
+        </ul> 
+      </div>
+      <footer class="game-footer">
+        <div>
+          <img 
+            class="eos-lg"
+            :src="eosLogo" />
+          <span>{{currentEOS}}</span>
+        </div>
+        <button 
+          v-if="account.name"
+          @click="doAction"
+          class="btn-action">ROLL DICE</button>
+        <button 
+          v-else
+          @click="login"
+          class="btn-action">LOGIN</button>
+        <div>
+          <img 
+            class="token-logo"
+            :src="tokenLogo" />
+          <span>0.0000</span>
+        </div>
+      </footer>
+    </div>
+
+    <dice-slider 
+      :initial="rollUnder" 
+      :max="96" 
+      :min="2" />
+
+    <el-dialog 
+      width="30%"
+      :visible.sync="showAbout">
+      <p slot="title">How To Play</p>
+      <ol>
+        <li>1. Make sure you have an EOS account. For more information on how to create one, <a href="//signupeoseos.com/" target="_blank">click here</a>.</li>
+        <li>2. If you haven’t already, download and install <a href="//get-scatter.com/" target="_blank">Scatter</a>, an EOS wallet that facilitates interaction between users and dApps.</li>
+        <li>3. Set your BET AMOUNT. This is the amount of EOS you will be wagering.</li>
+        <li>4. Adjust the slider to change your chance of winning.</li>
+        <li>5. Click ROLL DICE to place your bet.</li>
+        <li>6. If your number is lower than your ROLL UNDER TO WIN number, you win!</li>
+        <li>7. If you get a notice that your transaction failed, please check that you have enough CPU & bandwidth to make the transaction! Soon, we will be delegating user’s CPU from the EOSBet CPU pool. Currently, however, you have to supply these resources on your own. Please use <a href="//eostoolkit.io/home" target="_blank">EOSToolkit</a> to make any changes to your account!</li>
+      </ol>
+      <p>You can view your EOS and BET token balances next to the ROLL DICE button. The table below the slider bar shows recent bets from all players across the world.</p>
+      <p>Still have questions? Reach out to us at <a href="" target="_blank">Discord</a> and we’ll be happy to help!</p>
+    </el-dialog>
+    
+    <el-dialog
+      :visible.sync="showSocial">
+      <p slot="title">Join the EOSBet Community</p>
+      <ul class="social-links">
+        <li @click="navigate('twitter')">
+          <font-awesome-icon :icon="['fab', 'twitter']" /> 
+        </li>
+        <li @click="navigate('github')">
+          <font-awesome-icon :icon="['fab', 'github']" /> 
+        </li>
+        <li @click="navigate('medium')">
+          <font-awesome-icon :icon="['fab', 'medium-m']" /> 
+        </li>
+        <li @click="navigate('discord')">
+          <font-awesome-icon :icon="['fab', 'discord']" /> 
+        </li>
+      </ul>
+    </el-dialog>
+  </section> 
+</template>
+
+<script>
+  import eosLogo from '@/assets/eos.png';
+  import tokenLogo from '@/assets/bet-token.png';
+  import Eos from 'eosjs';
+  import eventHub from '@/utils/event';
+  import network from '@/utils/network';
+  import fetch from '@/utils/api';
+  import api from '@/utils/eos';
+
+  export default {
+    mounted() {
+      eventHub.$on('ROLLUNDER_CHANGE', rollUnder => this.rollUnder = rollUnder);
+      eventHub.$on('SHOW_ABOUT', () => this.showAbout = true);
+      eventHub.$on('SHOW_SOCIAL', () => this.showSocial = true);
+      this.getEOS();
+    },
+    data() {
+      return {
+        eosLogo,
+        tokenLogo,
+        eos: 1,
+        rollUnder: 50,
+        currentEOS: '0.0000',
+        showAbout: false,
+        showSocial: false
+      }
+    },
+    methods: {
+      getEOS() {
+        if (!this.account.name) {
+          this.currentEOS = '0.0000';
+          return;
+        };
+        return api.getAccount(this.account.name).then(({ core_liquid_balance }) => {
+          this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, '')).toFixed(4);
+        });
+      },
+
+      setEOS(rate) {
+        if (!rate) return this.eos = this.currentEOS;
+        let eos = this.eos * rate;
+        if (eos < 0.1) eos = 0.1;
+        this.eos = Number(eos).toFixed(4);
+      },
+
+      doAction() {
+        const body = new FormData();
+        const eos = scatter.eos(network, Eos, {})
+        const options = {
+          authorization: `${this.account.name}@${this.account.authority}`,
+          broadcast: true,
+          sign: true
+        };
+
+        body.append('roll_under', this.rollUnder);
+
+        fetch('//dice.dapp.pub/dice/', {
+          method: 'POST',
+          body 
+        }).then(({ expiration_timestamp, seed, signature }) => {
+          eos.transfer({
+            from: this.account.name, 
+            to: 'fairdicegame',
+            quantity: Number(this.eos).toFixed(4) + ' EOS',
+            memo: `${this.rollUnder}-${seed}-${expiration_timestamp}-${signature}` 
+          }).then(() => {
+            this.getEOS(); 
+
+            this.$notify({
+              title: 'Bet success',
+              message: 'Waiting for bet result',
+              duration: 5000,
+              showClose: false,
+              type: 'info'
+            });
+
+            this.fetchResult(seed);
+          });
+        });
+      },
+
+      fetchResult(hash) {
+        fetch(`//api.dapp.pub/dice/bet?hash=${hash}`).then(res => {
+          this.getEOS();        
+        }).catch(res => {
+          if (res.status === 404) this.fetchResult(hash);
+        });
+      },
+
+      login() {
+        scatter.getIdentity({
+          accounts: [network]
+        }).then(() => {
+          const account = scatter.identity.accounts.find(account => account.blockchain === 'eos');
+          if (!account) return;
+          this.$store.commit('UPDATE_ACCOUNT', account);
+        }).catch(e => {
+          this.$message.warning(e.message);
+        });
+      },
+
+      navigate(brand) {
+        switch (brand) {
+          case 'twitter':
+            window.open('//twitter.com/dappPub');
+            break;
+          case 'medium':
+            window.open('//medium.com/dapppub');
+            break;
+          case 'github':
+            window.open('//github.com/dappub');
+            break;
+          case 'discord':
+            break;
+        }
+      }
+    },
+    watch: {
+      account() {
+        this.getEOS();
+      }
+    },
+    components: {
+      diceSlider: require('@/components/slider').default
+    },
+    computed: {
+      winChance() {
+        return this.rollUnder - 1;
+      },
+      payOut() {
+        return (98 / this.winChance).toFixed(2);
+      },
+      payWin() {
+        return (98 / this.winChance).toFixed(4);
+      },
+      account() {
+        return this.$store.state.account; 
+      }
+    }
+  };
+</script>
+
+<style scoped>
+  .game {
+    background: url('../assets/bg.png') top left repeat;
+    background-size: contain;
+    padding: 60px 0;
+  }
+
+  .form {
+    width: 655px;
+    border-radius: 5px; 
+    font-size: 18px;
+    background-color: #4b4848;
+    margin: 0 auto 20px auto;
+    padding: 20px 30px;
+  }
+
+  .form-group {
+    display: flex;
+    align-items: center;
+  }
+
+  .form-group > div:last-child {
+    flex: 1;
+  }
+
+  .amount-rate {
+    display: flex;
+    align-items: center;
+  }
+
+  .amount-rate li {
+    color: #9b9fae;
+    font-size: .6em;
+    font-weight: 600;
+  }
+
+  .amount-rate li:not(:last-child) {
+    border-right: 2px solid #2F2F2F;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    color: #9b9fae;
+    font-weight: 600;
+    font-size: .6em;
+    margin-bottom: .75em;
+    display: block;
+  }
+
+  .form-group input {
+    text-align: center;
+    border: none;
+    padding: 10px 12px;
+    borde-radius: .3em;
+    font-weight: 600;
+    letter-spacing: .2px;
+    font-size: 18px;
+    outline: none;
+    background-color: #4b4848;
+    width: 177px;
+    color: #fff;
+  }
+
+  .input-amount-group {
+    display: flex;
+    align-items: center;
+    background-color: #3f3e3e;
+    padding: 2px;
+    border-radius: .3em;    
+    margin-right: 30px;
+    height: 47px;
+    position: relative;
+  }
+
+  .input-amount-group ul li {
+    cursor: pointer;
+    padding: 8px 15px;
+  }
+
+  .input-amount-group ul li:hover {
+    background-color: #0000003f; 
+  }
+
+  .input-group {
+    flex: 1;
+  }
+
+  .input-group input {
+    padding-left: 15px;   
+  }
+
+  .input-group .eos-logo {
+    position: absolute;
+    left: 10px;
+    top: 12.5px;
+  }
+
+  .info-container {
+    background-color: #3F3E3E; 
+    padding: 20px;
+  }
+
+  .info-container ul {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .info-container ul > li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+
+  .info-container ul > li:not(:last-child) {
+    border-right: 2px solid #2F2F2F;
+  }
+
+  .info-container ul > li > label {
+    color: #9b9fae;
+    font-weight: 600;
+    font-size: .6em;
+    margin-bottom: .75em;
+    display: block;
+  }
+
+  .info-container ul > li > span {
+    color: #fff;
+    font-size: 1.2em;
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+
+  .bet-cell {
+    background-color: #3f3e3e;
+    border-radius: .3em;
+    height: 47px;
+    line-height: 47px;
+    text-align: center;
+    position: relative;
+  }
+
+  .bet-cell > span {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .bet-cell .eos-logo {
+    position: absolute;
+    left: 10px;
+    top: 12.5px;
+  }
+
+  .game-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+  } 
+
+  .game-footer > div {
+    flex: 1;
+    text-align: center;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .btn-action {
+    outline: none;
+    letter-spacing: 3px;
+    font-weight: 600;
+    font-size: 18px;
+    background-color: #0191ee;
+    border-color: #0191ee;
+    cursor: pointer; 
+    padding: .5rem 1rem;
+    line-height: 1.5;
+    border-radius: .3rem;
+    color: #fff;
+    flex: 1;
+  }
+
+  .eos-logo {
+    height: 22px;
+  }
+
+  .eos-lg {
+    width: 22px;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  .token-logo {
+    width: 22px;
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+
+  .game >>> .el-dialog {
+    background-color: #4A4848;
+  }
+
+  .game >>> .el-dialog__header {
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+    letter-spacing: .5px;
+    color: #fff;
+    font-size: 1.25em;
+  }
+
+  .game >>> .el-dialog__body {
+    color: #fff;
+    padding-top: 0;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: #fff;
+    font-size: 1em;
+  }
+
+  .game >>> .el-dialog__body li,
+  .game >>> .el-dialog__body p {
+    margin-bottom: 10px;
+  }
+
+  .game >>> .el-dialog__body a {
+    color: #0191ee;
+    text-decoration: none;
+  }
+
+  .game >>> .el-dialog__body a:hover {
+    text-decoration: underline;
+  }
+
+  .social-links {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 30px 30px 0 30px;  
+    font-size: 1.2em;
+  }
+
+  .social-links li {
+    border-radius: 50%;
+    padding: 10px;
+    cursor: pointer;
+    transition: background-color ease 200ms;
+  }
+
+  .social-links li:hover {
+    background-color: #6C2DED;
+  }
+</style>
+
