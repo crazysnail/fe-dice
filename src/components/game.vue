@@ -119,6 +119,7 @@
   import network from '@/utils/network';
   import fetch from '@/utils/api';
   import api from '@/utils/eos';
+  import EosApi from '@/utils/eosapi';
 
   export default {
     mounted() {
@@ -143,7 +144,7 @@
         if (!this.account.name) {
           this.currentEOS = '0.0000';
           return;
-        };
+        }
         return api.getAccount(this.account.name).then(({ core_liquid_balance }) => {
           this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, '')).toFixed(4);
         });
@@ -182,7 +183,7 @@
             this.$notify({
               title: 'Bet success',
               message: 'Waiting for bet result',
-              duration: 5000,
+              duration: 2000,
               showClose: false,
               type: 'info'
             });
@@ -193,10 +194,25 @@
       },
 
       fetchResult(hash) {
-        fetch(`//api.dapp.pub/dice/bet?hash=${hash}`).then(res => {
-          this.getEOS();        
-        }).catch(res => {
-          if (res.status === 404) this.fetchResult(hash);
+        EosApi.getActions(this.account.name, -1, -20).then(({ actions }) => {
+          for (var action of actions.reverse()) {
+            if (action.action_trace.act.account == "fairdicelogs"
+            && action.action_trace.act.name == "result"
+            && action.action_trace.act.data.result.seed_hash == hash) {
+              this.getEOS();
+              if (action.action_trace.act.data.result.payout != "0.0000 EOS") {
+                this.$notify({
+                  title: 'Win Win Win!!!',
+                  message: 'You win '+action.action_trace.act.data.result.payout+' payout!',
+                  duration: 5000,
+                  showClose: false,
+                  type: 'success'
+                });
+              }
+              return;
+            }
+          }
+          this.fetchResult(hash);
         });
       },
 
