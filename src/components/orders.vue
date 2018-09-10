@@ -20,12 +20,12 @@
         <tr 
           :key="index"
           v-for="(order, index) in orders">
-          <td>{{dateFormat(order.time)}}</td> 
-          <td>{{order.player}}</td> 
-          <td>{{order.roll_under}}</td> 
-          <td>{{order.eos}}</td> 
-          <td>{{order.random_roll}}</td>
-          <td class="payout">{{order.payout && Number(order.payout).toFixed(4) || ''}}</td> 
+          <td>{{dateFormat(order.block_time)}}</td> 
+          <td>{{order.action_trace.act.data.result.player}}</td> 
+          <td>{{order.action_trace.act.data.result.roll_under}}</td> 
+          <td>{{order.action_trace.act.data.result.amount}}</td> 
+          <td>{{order.action_trace.act.data.result.random_roll}}</td>
+          <td class="payout">{{(order.action_trace.act.data.result.payout != "0.0000 EOS") && order.action_trace.act.data.result.payout || ''}}</td> 
         </tr>
       </tbody>
     </table>
@@ -33,7 +33,7 @@
 </template>
 
 <script>
-  import fetch from '@/utils/api';
+  import EosApi from '@/utils/eosapi';
 
   export default {
     mounted() {
@@ -48,20 +48,13 @@
 
     methods: {
       fetchOrders() {
-        fetch('//api.dapp.pub/dice/bets').then(({ bets }) => this.orders = bets);
+        EosApi.getActions("fairdicelogs", -1, -20).then(({ actions }) => this.orders = actions.filter(function (action) {
+          return action.action_trace.act.account == "fairdicelogs" && action.action_trace.act.name == "result";
+        }).reverse());
       },
 
       dateFormat(raw) {
-        const date = new Date(raw);
-        let hours = date.getHours();
-        let minutes = date.getMinutes();
-        let seconds = date.getSeconds();
-    
-        if (hours < 10) hours = '0' + hours; 
-        if (minutes < 10) minutes = '0' + minutes;
-        if (seconds < 10) seconds = '0' + seconds;
-        
-        return `${hours}:${minutes}:${seconds}`;
+        return (new Date(raw+'Z')).toLocaleTimeString();
       }
     }
   };
