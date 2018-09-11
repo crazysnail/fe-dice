@@ -86,7 +86,7 @@
       :visible.sync="showAbout">
       <p slot="title">How To Play</p>
       <ol>
-        <li>1. Make sure you have an EOS account. For more information on how to create one, <a href="//signupeoseos.com/" target="_blank">click here</a>.</li>
+        <li>1. Make sure you have an EOS account. For more information on how to create one, <a href="//medium.com/dapppub/create-your-own-eos-account-easily-using-the-non-service-fee-dapp-signupeoseos-b15c5347f2fc" target="_blank">click here</a>.</li>
         <li>2. If you haven’t already, download and install <a href="//get-scatter.com/" target="_blank">Scatter</a>, an EOS wallet that facilitates interaction between users and dApps.</li>
         <li>3. Set your BET AMOUNT. This is the amount of EOS you will be wagering.</li>
         <li>4. Adjust the slider to change your chance of winning.</li>
@@ -160,7 +160,7 @@
         if (!this.account.name) {
           this.currentEOS = 0;
           return;
-        };
+        }
         return api.getAccount(this.account.name).then(({ core_liquid_balance }) => {
           this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, ''));
         });
@@ -186,6 +186,14 @@
         });
       },
 
+      floor(value, decimals) {
+        return Number(Math.floor(value+'e'+decimals)+'e-'+decimals);
+      },
+
+      maxBetAmount() {
+        return this.floor(this.poolBalance / 100 / (98 / this.winChance) * 0.9, 4);
+      },
+
       setEOS(rate) {
         const { poolBalance, currentEOS } = this;
         let eos = rate ? this.eos * rate : this.currentEOS;
@@ -196,15 +204,15 @@
           case (eos > currentEOS):
             eos = currentEOS;
             break;
-          case (eos > poolBalance / 100 / (100 / this.winChance)):
-            eos = poolBalance / 100 / (100 / this.winChance);
+          case (eos > this.maxBetAmount()):
+            eos = this.maxBetAmount();
             break;
         }
         this.eos = Number(eos).toFixed(4);
       },
 
       doAction() {
-        let maxAmount = this.poolBalance / 100 / (100 / this.winChance);
+        let maxAmount = this.maxBetAmount();
         if (this.eos > maxAmount) {
           this.$notify({
             title: 'Bet Failed',

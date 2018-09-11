@@ -35,7 +35,6 @@
 </template>
 
 <script>
-  import fetch from '@/utils/api';
   import api from '@/utils/eos';
 
   export default {
