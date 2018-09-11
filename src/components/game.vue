@@ -258,16 +258,16 @@
 
           if (payout === '0.0000 EOS') {
             this.showDownAnimation = true; 
-            this.animationTxt = payout;
+            this.animationTxt = amount;
           } else {
             this.showUpAnimation = true;
-            this.animationTxt = amount;
+            this.animationTxt = payout;
           }
 
           setTimeout(() => {
             this.showDownAnimation = false; 
             this.showUpAnimation = false;
-          }, 1100);
+          }, 3100);
 
           this.animating = false;
           this.getEOS();
@@ -618,7 +618,7 @@
   }
 
   .eos-animation.animateUp {
-    animation: fadeOutUp 1s;
+    animation: fadeOutUp 3s;
     color: #02f292; 
     text-shadow: 0 0 5px #02f292;
   }
