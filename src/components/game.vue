@@ -211,7 +211,18 @@
             message: 'Bet Amount should not be more than ' + maxAmount.toFixed(4) + ' EOS',
             duration: 2000,
             showClose: false,
-            type: 'info'
+            type: 'error'
+          });
+          return;
+        }
+        const minBetAmount = 0.1
+        if (this.eos < minBetAmount) {
+          this.$notify({
+            title: 'Bet Failed',
+            message: 'Bet Amount should be more than ' + minBetAmount.toFixed(4) + ' EOS',
+            duration: 2000,
+            showClose: false,
+            type: 'error'
           });
           return;
         }
