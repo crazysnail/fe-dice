@@ -267,7 +267,7 @@
           setTimeout(() => {
             this.showDownAnimation = false; 
             this.showUpAnimation = false;
-          }, 1100);
+          }, 3100);
 
           this.animating = false;
           this.getEOS();
@@ -624,7 +624,7 @@
   }
 
   .eos-animation.animateDown {
-    animation: fadeOutDown 3s;
+    animation: fadeOutDown 1s;
     color: #CD4263;
     text-shadow: 0 0 5px #CD4263;
   }
