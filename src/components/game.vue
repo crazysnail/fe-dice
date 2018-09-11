@@ -196,14 +196,25 @@
           case (eos > currentEOS):
             eos = currentEOS;
             break;
-          case (eos > poolBalance / 100):
-            eos = poolBalance / 100;
+          case (eos > poolBalance / 100 / (100 / this.winChance)):
+            eos = poolBalance / 100 / (100 / this.winChance);
             break;
         }
         this.eos = Number(eos).toFixed(4);
       },
 
       doAction() {
+        let maxAmount = this.poolBalance / 100 / (100 / this.winChance);
+        if (this.eos > maxAmount) {
+          this.$notify({
+            title: 'Bet Failed',
+            message: 'Bet Amount should not be more than ' + maxAmount.toFixed(4) + ' EOS',
+            duration: 2000,
+            showClose: false,
+            type: 'info'
+          });
+          return;
+        }
         const body = new FormData();
         const eos = scatter.eos(network, Eos, {})
         const options = {
