@@ -160,7 +160,7 @@
         if (!this.account.name) {
           this.currentEOS = 0;
           return;
-        };
+        }
         return api.getAccount(this.account.name).then(({ core_liquid_balance }) => {
           this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, ''));
         });
@@ -186,6 +186,14 @@
         });
       },
 
+      floor(value, decimals) {
+        return Number(Math.floor(value+'e'+decimals)+'e-'+decimals);
+      },
+
+      maxBetAmount() {
+        return this.floor(this.poolBalance / 100 / (98 / this.winChance) * 0.9, 4);
+      },
+
       setEOS(rate) {
         const { poolBalance, currentEOS } = this;
         let eos = rate ? this.eos * rate : this.currentEOS;
@@ -196,15 +204,15 @@
           case (eos > currentEOS):
             eos = currentEOS;
             break;
-          case (eos > poolBalance / 100 / (100 / this.winChance)):
-            eos = poolBalance / 100 / (100 / this.winChance);
+          case (eos > this.maxBetAmount()):
+            eos = this.maxBetAmount();
             break;
         }
         this.eos = Number(eos).toFixed(4);
       },
 
       doAction() {
-        let maxAmount = this.poolBalance / 100 / (100 / this.winChance);
+        let maxAmount = this.maxBetAmount();
         if (this.eos > maxAmount) {
           this.$notify({
             title: 'Bet Failed',
