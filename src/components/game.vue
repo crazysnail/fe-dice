@@ -9,7 +9,9 @@
               <img 
                 class="eos-logo"
                 :src="eosLogo" />
-              <input v-model="eos" />
+              <input 
+                @change="checkBetamount"
+                v-model="eos" />
             </div>
             <ul class="amount-rate">
               <li @click="setEOS(.5)">1/2</li> 
@@ -36,7 +38,7 @@
           </li>
           <li>
             <label>PAYOUT</label>
-            <span>{{payOut}}x</span>
+            <span>{{Number(payOut).toFixed(2)}}x</span>
           </li>
           <li>
             <label>WIN CHANCE</label>
@@ -45,21 +47,27 @@
         </ul> 
       </div>
       <footer class="game-footer">
-        <div>
+        <div class="currenteos-container">
           <img 
             class="eos-lg"
             :src="eosLogo" />
-          <span>{{currentEOS}}</span>
+          <span 
+            :class="{
+              'animateUp': this.showUpAnimation, 
+              'animateDown': this.showDownAnimation
+            }"
+            class="eos-animation">{{animationTxt}}</span>
+          <span>{{Number(currentEOS).toFixed(4)}}</span>
         </div>
-        <button 
+        <el-button 
           v-if="account.name"
           @click="doAction"
-          class="btn-action">ROLL DICE</button>
+          class="btn-action">{{actionTxt}}</el-button>
         <button 
           v-else
           @click="login"
           class="btn-action">LOGIN</button>
-        <div>
+        <div class="bet-balance">
           <img 
             class="token-logo"
             :src="tokenLogo" />
@@ -87,7 +95,7 @@
         <li>7. If you get a notice that your transaction failed, please check that you have enough CPU & bandwidth to make the transaction! Soon, we will be delegating user’s CPU from the EOSBet CPU pool. Currently, however, you have to supply these resources on your own. Please use <a href="//eostoolkit.io/home" target="_blank">EOSToolkit</a> to make any changes to your account!</li>
       </ol>
       <p>You can view your EOS and BET token balances next to the ROLL DICE button. The table below the slider bar shows recent bets from all players across the world.</p>
-      <p>Still have questions? Reach out to us at <a href="" target="_blank">Discord</a> and we’ll be happy to help!</p>
+      <p>Still have questions? Reach out to us at <a href="//discordapp.com/channels/482077322070196225/487187255065313292" target="_blank">Discord</a> and we’ll be happy to help!</p>
     </el-dialog>
     
     <el-dialog
@@ -126,33 +134,72 @@
       eventHub.$on('SHOW_ABOUT', () => this.showAbout = true);
       eventHub.$on('SHOW_SOCIAL', () => this.showSocial = true);
       this.getEOS();
+      this.getPool();
     },
+
     data() {
       return {
         eosLogo,
         tokenLogo,
         eos: 1,
         rollUnder: 50,
-        currentEOS: '0.0000',
+        currentEOS: 0,
+        poolBalance: 0,
+        timer: 0,
+        animationTxt: 0,
+        actionTxt: 'ROLL DICE',
         showAbout: false,
-        showSocial: false
-      }
+        showSocial: false,
+        animating: false,
+        showUpAnimation: false,
+        showDownAnimation: false
+      };
     },
     methods: {
       getEOS() {
         if (!this.account.name) {
-          this.currentEOS = '0.0000';
+          this.currentEOS = 0;
           return;
         };
         return api.getAccount(this.account.name).then(({ core_liquid_balance }) => {
-          this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, '')).toFixed(4);
+          this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, ''));
+        });
+      },
+
+      getPool() {
+        Promise.all([
+          api.getTableRows({
+            json: true,
+            code: 'eosio.token',
+            table: 'accounts',
+            scope: 'fairdicegame'
+          }),
+          api.getTableRows({
+            json: true,
+            code: 'fairdicegame',
+            table: 'fundpool',
+            scope: 'fairdicegame'
+          })
+        ]).then(([accountBalance, poolBalance]) => {
+          this.poolBalance = accountBalance.rows[0].balance.slice(0, -4) 
+            - poolBalance.rows[0].locked.slice(0, -4);
         });
       },
 
       setEOS(rate) {
-        if (!rate) return this.eos = this.currentEOS;
-        let eos = this.eos * rate;
-        if (eos < 0.1) eos = 0.1;
+        const { poolBalance, currentEOS } = this;
+        let eos = rate ? this.eos * rate : this.currentEOS;
+        switch (true) {
+          case (eos < 0.1): 
+            eos = 0.1;
+            break;
+          case (eos > currentEOS):
+            eos = currentEOS;
+            break;
+          case (eos > poolBalance / 100):
+            eos = poolBalance / 100;
+            break;
+        }
         this.eos = Number(eos).toFixed(4);
       },
 
@@ -165,8 +212,11 @@
           sign: true
         };
 
-        body.append('roll_under', this.rollUnder);
+        this.showEOSAnimation = true;
+        this.$message.info('Waiting for Scatter to confirm transfer...');
 
+        body.append('roll_under', this.rollUnder);
+        
         fetch('//dice.dapp.pub/dice/', {
           method: 'POST',
           body 
@@ -178,25 +228,49 @@
             memo: `${this.rollUnder}-${seed}-${expiration_timestamp}-${signature}` 
           }).then(() => {
             this.getEOS(); 
+            this.fetchResult(seed);
+            this.animating = true;
 
             this.$notify({
               title: 'Bet success',
               message: 'Waiting for bet result',
-              duration: 5000,
+              duration: 2000,
               showClose: false,
               type: 'info'
             });
-
-            this.fetchResult(seed);
+          }).catch(e => {
+            this.$notify.error(e.message || JSON.parse(e).error.details[0].message);
           });
         });
       },
 
       fetchResult(hash) {
-        fetch(`//api.dapp.pub/dice/bet?hash=${hash}`).then(res => {
-          this.getEOS();        
-        }).catch(res => {
-          if (res.status === 404) this.fetchResult(hash);
+        api.getActions('fairdicelogs', -1, -20).then(({ actions }) => {
+          const result = actions.find(action => action.action_trace
+            && action.action_trace.act 
+            && action.action_trace.act.account === 'fairdicelogs' 
+            && action.action_trace.act.name === 'result'
+            && action.action_trace.act.data.result.seed_hash === hash);  
+
+          if (!result) return this.fetchResult(hash);
+
+          const { action_trace: { act: { data: { result: { amount, payout } } } } } = result;
+
+          if (payout === '0.0000 EOS') {
+            this.showDownAnimation = true; 
+            this.animationTxt = payout;
+          } else {
+            this.showUpAnimation = true;
+            this.animationTxt = amount;
+          }
+
+          setTimeout(() => {
+            this.showDownAnimation = false; 
+            this.showUpAnimation = false;
+          }, 1100);
+
+          this.animating = false;
+          this.getEOS();
         });
       },
 
@@ -211,6 +285,9 @@
           this.$message.warning(e.message);
         });
       },
+      
+      checkBetamount() {
+      },
 
       navigate(brand) {
         switch (brand) {
@@ -224,13 +301,26 @@
             window.open('//github.com/dappub');
             break;
           case 'discord':
+            window.open('//discordapp.com/channels/482077322070196225/487187255065313292');
             break;
         }
       }
     },
+
     watch: {
       account() {
         this.getEOS();
+      },
+      animating() {
+        const { animating } = this;
+        if (!animating) {
+          clearInterval(this.timer);
+          this.actionTxt = 'ROLL DICE';
+          return;
+        }
+        this.timer = setInterval(() => {
+          this.actionTxt = (Math.random() * 100).toFixed(0);
+        }, 100);
       }
     },
     components: {
@@ -240,12 +330,15 @@
       winChance() {
         return this.rollUnder - 1;
       },
+
       payOut() {
-        return (98 / this.winChance).toFixed(2);
+        return 98 / this.winChance;
       },
+
       payWin() {
-        return (98 / this.winChance).toFixed(4);
+        return (this.eos * this.payOut).toFixed(4);
       },
+
       account() {
         return this.$store.state.account; 
       }
@@ -508,6 +601,56 @@
 
   .social-links li:hover {
     background-color: #6C2DED;
+  }
+
+  .bet-balance {
+    visibility: hidden;
+  }
+
+  .currenteos-container {
+    position: relative;
+  }
+
+  .eos-animation {
+    opacity: 0;
+    
+    position: absolute;
+  }
+
+  .eos-animation.animateUp {
+    animation: fadeOutUp 1s;
+    color: #02f292; 
+    text-shadow: 0 0 5px #02f292;
+  }
+
+  .eos-animation.animateDown {
+    animation: fadeOutDown 1s;
+    color: #CD4263;
+    text-shadow: 0 0 5px #CD4263;
+  }
+
+  @keyframes fadeOutUp {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0;
+      -webkit-transform: translate3d(0, -100%, 0);
+      transform: translate3d(0, -100%, 0);
+    }
+  }
+
+  @keyframes fadeOutDown {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0;
+      -webkit-transform: translate3d(0, 100%, 0);
+      transform: translate3d(0, 100%, 0);
+    }
   }
 </style>
 

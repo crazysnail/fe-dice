@@ -52,7 +52,8 @@ export default {
     this.slideWidth = offsetWidth;
   
     document.addEventListener('mousemove', this.drag);
-    document.addEventListener('mouseup', this.dragEnd)
+    document.addEventListener('mouseup', this.dragEnd);
+    document.addEventListener('mouseleave', this.dragEnd);
   },
   data() {
     return {
@@ -98,7 +99,9 @@ export default {
     }
   },
   destroyed() {
-    
+    document.removeEventListener('mousemove', this.drag);
+    document.removeEventListener('mouseleave', this.dragEnd);
+    document.removeEventListener('mouseup', this.dragEnd);
   }
 };
 </script>
@@ -111,6 +114,7 @@ export default {
     margin: 0 auto;
     width: 655px; 
     padding: 30px;
+    user-select: none;
   } 
 
   .slider {
