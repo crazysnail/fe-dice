@@ -86,7 +86,7 @@
       :visible.sync="showAbout">
       <p slot="title">How To Play</p>
       <ol>
-        <li>1. Make sure you have an EOS account. For more information on how to create one, <a href="//signupeoseos.com/" target="_blank">click here</a>.</li>
+        <li>1. Make sure you have an EOS account. For more information on how to create one, <a href="//medium.com/dapppub/create-your-own-eos-account-easily-using-the-non-service-fee-dapp-signupeoseos-b15c5347f2fc" target="_blank">click here</a>.</li>
         <li>2. If you haven’t already, download and install <a href="//get-scatter.com/" target="_blank">Scatter</a>, an EOS wallet that facilitates interaction between users and dApps.</li>
         <li>3. Set your BET AMOUNT. This is the amount of EOS you will be wagering.</li>
         <li>4. Adjust the slider to change your chance of winning.</li>
