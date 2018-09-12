@@ -250,14 +250,14 @@
 
         this.showEOSAnimation = true;
         this.$message.info('Waiting for Scatter to confirm transfer...');
-
+        let referrer = 'fairdicegame';  
         body.append('roll_under', this.rollUnder);
+        body.append('referrer', referrer);
         
         fetch('//dice.dapp.pub/dice/', {
           method: 'POST',
           body 
         }).then(({ expiration_timestamp, seed, signature }) => {
-          let referrer = 'fairdicegame';
           eos.transfer({
             from: this.account.name, 
             to: 'fairdicegame',
