@@ -94,7 +94,7 @@
         <li>6. If your number is lower than your ROLL UNDER TO WIN number, you win!</li>
         <li>7. If you get a notice that your transaction failed, please check that you have enough CPU & bandwidth to make the transaction! Please use <a href="//eostoolkit.io/home" target="_blank">EOSToolkit</a> to make any changes to your account!</li>
       </ol>
-      <p>You can view your EOS and BET token balances next to the ROLL DICE button. The table below the slider bar shows recent bets from all players across the world.</p>
+      <p>You can view your EOS balance next to the ROLL DICE button. The table below the slider bar shows recent bets from all players across the world.</p>
       <p>Still have questions? Reach out to us at <a href="//discordapp.com/channels/482077322070196225/487187255065313292" target="_blank">Discord</a> and we’ll be happy to help!</p>
     </el-dialog>
     
