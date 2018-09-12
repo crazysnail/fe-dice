@@ -287,6 +287,8 @@
             && action.action_trace.act 
             && action.action_trace.act.account === 'fairdicelogs' 
             && action.action_trace.act.name === 'result'
+            && action.action_trace.act.data
+            && action.action_trace.act.data.result
             && action.action_trace.act.data.result.seed_hash === hash);  
 
           if (!result) return this.fetchResult(hash);
