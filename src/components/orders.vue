@@ -54,6 +54,8 @@
           this.orders = actions.filter(action => {
             return action.action_trace
               && action.action_trace.act
+              && action.action_trace.act.data
+              && action.action_trace.act.data.result
               && action.action_trace.act.account == "fairdicelogs" 
               && action.action_trace.act.name == "result";
           }).reverse();
