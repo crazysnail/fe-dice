@@ -257,11 +257,12 @@
           method: 'POST',
           body 
         }).then(({ expiration_timestamp, seed, signature }) => {
+          let referrer = 'fairdicegame';
           eos.transfer({
             from: this.account.name, 
             to: 'fairdicegame',
             quantity: Number(this.eos).toFixed(4) + ' EOS',
-            memo: `${this.rollUnder}-${seed}-${this.getClientSeed()}-${expiration_timestamp}-${signature}` 
+            memo: `${this.rollUnder}-${seed}-${this.getClientSeed()}-${expiration_timestamp}-${referrer}-${signature}` 
           }).then(() => {
             this.getEOS(); 
             this.fetchResult(seed);
