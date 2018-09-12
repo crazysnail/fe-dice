@@ -127,6 +127,7 @@
   import network from '@/utils/network';
   import fetch from '@/utils/api';
   import api from '@/utils/eos';
+  import createHash from 'create-hash';
 
   export default {
     mounted() {
@@ -211,6 +212,11 @@
         this.eos = Number(eos).toFixed(4);
       },
 
+      getClientSeed() {
+        let randomNumber = Math.floor(Math.random() * Math.floor(Number.MAX_SAFE_INTEGER));
+        return createHash('sha1').update(this.account.name + Date.now() + randomNumber).digest('hex');
+      },
+
       doAction() {
         let maxAmount = this.maxBetAmount();
         if (this.eos > maxAmount) {
@@ -255,7 +261,7 @@
             from: this.account.name, 
             to: 'fairdicegame',
             quantity: Number(this.eos).toFixed(4) + ' EOS',
-            memo: `${this.rollUnder}-${seed}-${expiration_timestamp}-${signature}` 
+            memo: `${this.rollUnder}-${seed}-${this.getClientSeed()}-${expiration_timestamp}-${signature}` 
           }).then(() => {
             this.getEOS(); 
             this.fetchResult(seed);
