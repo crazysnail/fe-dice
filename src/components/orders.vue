@@ -39,7 +39,8 @@
 
   export default {
     mounted() {
-      setInterval(this.fetchOrders, 1000);
+      //注释
+      //setInterval(this.fetchOrders, 1000);
     },
 
     data() {

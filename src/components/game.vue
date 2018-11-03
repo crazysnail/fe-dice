@@ -157,13 +157,37 @@
       };
     },
     methods: {
+    //   getAccountBalance() {
+    //    let params = {"code":"eosio.token","account":"dicebet"}
+    //     let res = await httpRequest.postRequest("http://127.0.0.1:8888/v1/chain/get_currency_balance", params)
+
+    // },
+
+    getCurBalance(){
+      alert(this.account.name)
+            let params = {"code":"eosio.token","account":"dicebet"}
+
+        return api.getCurrencyBalance("eosio.token","dicebet").then(function(res){
+              alert(res);
+              alert(typeof(res))
+          this.currentEOS = Number(JSON.stringify(res).replace(/\sEOS/, ''));
+            });
+            
+            alert(this.currentEOS)
+    },
+
+
       getEOS() {
         if (!this.account.name) {
           this.currentEOS = 0;
           return;
         }
         return api.getAccount(this.account.name).then(({ core_liquid_balance }) => {
-          this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, ''));
+          //alert(core_liquid_balance)
+
+         // this.currentEOS = Number(core_liquid_balance.replace(/\sEOS/, ''));
+          this.getCurBalance();
+
         });
       },
 
